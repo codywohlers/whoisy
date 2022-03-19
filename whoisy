@@ -2,7 +2,8 @@
 # whoisy
 # Simplifies and somewhat standardizes whois results and also return whois for ip and geoiplookup
 # Arguments: domain/ip
-
+#
+# 2022-Mar-19 code@codywohlers.ca - handled "Name server" case.
 # 2022-Mar-19 code@codywohlers.ca - removed trailing spaces so uniq works properly and converted domain to lowercase.
 # 2022-Mar-16 code@codwyohlers.ca - initial creation based on responses from multiple and international whois responses.
 
@@ -43,7 +44,7 @@ whois "$DOMAIN" \
 |sed 's/^DNS:/Name Server:/g' \
 |sed 's/^dns:/Name Server:/g' \
 `: # Make Name Servers lowercase`\
-|sed 's/^Name Server:.*/\L&/g' |sed 's/^name server/Name Server/g' \
+|sed 's/^Name [Ss]erver:.*/\L&/g' |sed 's/^name server/Name Server/g' \
 `: # Keep Registrar URLs consistent between whois servers and even in the same results (https:// vs http:// vs none).`\
 |sed 's/http[s]*:\/\///g' \
 `: # Filer the needed fields.  Some servers have the country in an Address field as the two-letter abbreviation.`\
@@ -70,7 +71,7 @@ whois "$DOMAIN" \
 ^Country:\|\
 ^Registrar:\|\
 ^Registrar URL:\|\
-^Name Server:" \
+^Name [Ss]erver:" \
 `: # Sort fields`\
 |sed 's/^Registrant/01-&/g' \
 |sed 's/^Org/01-&/g' \
