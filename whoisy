@@ -1,0 +1,158 @@
+#!/bin/bash
+# whoisy
+# Simplifies and somewhat standardizes whois results and also return whois for ip and geoiplookup
+# Arguments: domain
+
+# 2022-Mar-16 code@codwyohlers.ca - initial creation based on responses from multiple and international whois responses.
+
+if [ -z "$1" ] ;then
+echo "Error: no domain or ip address supplied." >&2
+exit 1
+fi
+
+# If argument does not start with a number assume it is a domain.
+if [[ ! "$1" =~ ^[0-9] ]] ;then
+echo "Domain:"$'\t\t'"$1"
+
+# Multi-line in-line comments as per https://stackoverflow.com/a/12797512
+whois "$1" \
+`: # Remove leading spaces.`\
+|sed 's/^ *//g' \
+`: # Remove blank fields.`\
+|grep -v ':$' \
+`: # Make the first letter of each line uppercase to be consistent between whois servers.`\
+|sed 's/^[a-z]/\U&/g' \
+`: # Merge all Name/Org/Address fields by removing specifier so they can be sorted.`\
+|sed 's/^Registrant //g' \
+|sed 's/^Admin //g' \
+|sed 's/^Tech //g' \
+|sed 's/^Billing //g' \
+`: # Remove "State" fields that do not mean State/Province (eg .ru)`\
+|grep -v '^State: *REGISTERED' \
+`: # Change "State" and "Province" to "State/Province" to be consistent. (eg .mx)`\
+|sed 's/^State:/State\/Province:/g' \
+|sed 's/^Province:/State\/Province:/g' \
+`: # Change "Sponsoring Registrar" to "Registrar" to be consistent. (eg .cn)`\
+|sed 's/^Sponsoring Registrar/Registrar/g' \
+`: # Keep "Name Server" field consistent between whois servers (eg .mx, .ru)`\
+|sed 's/^Nserver:/Name Server:/g' \
+|sed 's/^DNS:/Name Server:/g' \
+|sed 's/^dns:/Name Server:/g' \
+`: # Keep Registrar URLs consistent between whois servers and even in the same results (https:// vs http:// vs none).`\
+|sed 's/http[s]*:\/\///g' \
+`: # Filer the needed fields.  Some servers have the country in an Address field as the two-letter abbreviation.`\
+|grep -i "\
+^No match\|\
+^No data\|\
+^No[t]* found\|\
+^No entries found\|\
+^Domain Status: No Object Found\|\
+^No_Se_Encontro_El_Objeto/Object_Not_Found\|\
+^Updated Date:\|\
+^Creation Date:\|\
+^Registered:\|\
+^Changed:\|\
+^Name:\|\
+^Contact:\|\
+^Org:\|\
+^OrgName:\|\
+^Organi[sz]ation:\|\
+^Registrant\|\
+^Address: *[A-Z]\{2\}$\|\
+^City:\|\
+^State/Province\|\
+^Country:\|\
+^Registrar:\|\
+^Registrar URL:\|\
+^Name Server:" \
+`: # Sort fields`\
+|sed 's/^Registrant/01-&/g' \
+|sed 's/^Org/01-&/g' \
+|sed 's/^Name:/02-&/g' \
+|sed 's/^Contact/02-&/g' \
+|sed 's/^City/03-&/g' \
+|sed 's/^State\/Province/04-&/g' \
+|sed 's/^Country/05-&/g' \
+|sed 's/^Address/05-Country/g' \
+|sed 's/^Registrar/06-&/g' \
+|sed 's/^Creation/07-&/g' \
+|sed 's/^Registered/07-&/g' \
+|sed 's/^Updated/08-&/g' \
+|sed 's/^Changed:/08-&/g' \
+|sort |uniq -i \
+|sed 's/^[0-9]\{2\}-//g' \
+`: # Make delimiters consistent by removing groups of spaces and replacing every field with a tab.`\
+|sed 's/  */ /g' |sed 's/: /:\t/g' \
+`: # Adjust column widths by adding extra tab for short field names.`\
+|sed 's/^[^ ]\{3\}:\t/&\t/g' \
+|sed 's/^[^ ]\{4\}:\t/&\t/g' \
+|sed 's/^[^ ]\{5\}:\t/&\t/g' \
+|uniq -i
+
+
+# Digg +short will sometimes return multiple ip addresses.
+IPs=`dig +short "$1"`
+# Lets check for www subdomain too.
+IPs+='
+'`dig +short "www.$1"`
+# Remove lines that don't start with a number (eg. CNAME entries).  both IPv4 and IPv6 will always start with a number for internet ip addresses.
+IPs=`echo "$IPs" |sed '/^[0-9]/!d' \
+|sort |uniq`
+
+echo
+
+else
+# Assume the argument is an ip address.
+IPs="$1"
+fi
+
+
+if [ -n "$IPs" ]; then
+
+while IFS=$'\n' read -r IP; do
+
+echo "IP Address:"$'\t'"$IP"
+
+OUTPUT+='
+'$(whois "$IP" \
+`: # Remove leading spaces.`\
+|sed 's/^ *//g' \
+`: # Remove blank fields.`\
+|grep -v ': *$' \
+`: # Make the first letter of each line uppercase to be consistent between whois servers.`\
+|sed 's/^[a-z]/\U&/g' \
+`: # Filer the needed fields`\
+|grep -i "\
+^Organi[sz]ation:\|\
+^OrgName:\|\
+^Name:\|\
+^Address:\|\
+^City:\|\
+^StateProv:\|\
+^Country:" \
+`: # Be consistent with domain fields above.`\
+|sed 's/StateProv:     /State\/Province:/g' \
+)
+
+# Add geoiplookup output and remove the "V6 Edition" from the field name.
+OUTPUT+='
+'$(geoiplookup "$IP" |sed 's/[V6 ]* Edition: /:\t/')
+
+done <<< "$IPs"
+
+
+echo "$OUTPUT" \
+`: # Remove blank lines.`\
+|sed '/^$/d' \
+`: # Sort fields`\
+|sed 's/^Org/01-&/g' \
+|sed 's/^Name:/02-&/g' \
+|sed 's/^Contact/02-&/g' \
+|sed 's/^Address/03-&/g' \
+|sed 's/^City/04-&/g' \
+|sed 's/^State\/Province/05-&/g' \
+|sed 's/^Country/06-&/g' \
+|sort |uniq -i \
+|sed 's/^[0-9]\{2\}-//g'
+
+fi
