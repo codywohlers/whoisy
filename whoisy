@@ -3,6 +3,7 @@
 # Simplifies and somewhat standardizes whois results and also return whois for ip and geoiplookup
 # Arguments: domain/ip
 
+# 2022-Mar-19 code@codywohlers.ca - removed trailing spaces so uniq works properly and converted domain to lowercase.
 # 2022-Mar-16 code@codwyohlers.ca - initial creation based on responses from multiple and international whois responses.
 
 if [ -z "$1" ] ;then
@@ -12,12 +13,15 @@ fi
 
 # If argument does not start with a number assume it is a domain.
 if [[ ! "$1" =~ ^[0-9] ]] ;then
-echo "Domain:"$'\t\t'"$1"
+# convert to lowercase
+DOMAIN=`echo "$1" |sed 's/.*/\L&/g'`
+echo "Domain:"$'\t\t'"$DOMAIN"
 
 # Multi-line in-line comments as per https://stackoverflow.com/a/12797512
-whois "$1" \
-`: # Remove leading spaces.`\
+whois "$DOMAIN" \
+`: # Remove leading and trailing spaces.`\
 |sed 's/^ *//g' \
+|sed 's/ *$//g' \
 `: # Remove blank fields.`\
 |grep -v ':$' \
 `: # Make the first letter of each line uppercase to be consistent between whois servers.`\
@@ -38,6 +42,8 @@ whois "$1" \
 |sed 's/^Nserver:/Name Server:/g' \
 |sed 's/^DNS:/Name Server:/g' \
 |sed 's/^dns:/Name Server:/g' \
+`: # Make Name Servers lowercase`\
+|sed 's/^Name Server:.*/\L&/g' |sed 's/^name server/Name Server/g' \
 `: # Keep Registrar URLs consistent between whois servers and even in the same results (https:// vs http:// vs none).`\
 |sed 's/http[s]*:\/\///g' \
 `: # Filer the needed fields.  Some servers have the country in an Address field as the two-letter abbreviation.`\
@@ -91,10 +97,10 @@ whois "$1" \
 
 
 # Digg +short will sometimes return multiple ip addresses.
-IPs=`dig +short "$1"`
+IPs=`dig +short "$DOMAIN"`
 # Lets check for www subdomain too.
 IPs+='
-'`dig +short "www.$1"`
+'`dig +short "www.$DOMAIN"`
 # Remove lines that don't start with a number (eg. CNAME entries).  both IPv4 and IPv6 will always start with a number for internet ip addresses.
 IPs=`echo "$IPs" |sed '/^[0-9]/!d' \
 |sort |uniq`
@@ -115,8 +121,9 @@ echo "IP Address:"$'\t'"$IP"
 
 OUTPUT+='
 '$(whois "$IP" \
-`: # Remove leading spaces.`\
+`: # Remove leading and trailing spaces.`\
 |sed 's/^ *//g' \
+|sed 's/ *$//g' \
 `: # Remove blank fields.`\
 |grep -v ': *$' \
 `: # Make the first letter of each line uppercase to be consistent between whois servers.`\
