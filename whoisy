@@ -1,7 +1,7 @@
 #!/bin/bash
 # whoisy
 # Simplifies and somewhat standardizes whois results and also return whois for ip and geoiplookup
-# Arguments: domain
+# Arguments: domain/ip
 
 # 2022-Mar-16 code@codwyohlers.ca - initial creation based on responses from multiple and international whois responses.
 

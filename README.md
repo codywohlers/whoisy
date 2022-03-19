@@ -4,7 +4,7 @@
 
 Bash script that simplifies and somewhat standardizes the output of `whois` with quick essential information, as well as reverse ip lookup whois.
 
-Requires: `dig`, `geoiplookup`
+Requires: `whois`, `dig`, `geoiplookup`
 
 Output format:
 
