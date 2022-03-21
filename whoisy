@@ -3,6 +3,7 @@
 # Simplifies and somewhat standardizes whois results and also return whois for ip and geoiplookup
 # Arguments: domain/ip
 #
+# 2022-Mar-21 code@codywohlers.ca - changed IP whois address field to only filter two letters (country).
 # 2022-Mar-20 code@codywohlers.ca - added "No whois server" error to the filter.
 # 2022-Mar-19 code@codywohlers.ca - handled "Name server" case.
 # 2022-Mar-19 code@codywohlers.ca - removed trailing spaces so uniq works properly and converted domain to lowercase.
@@ -136,7 +137,7 @@ OUTPUT+='
 ^Organi[sz]ation:\|\
 ^OrgName:\|\
 ^Name:\|\
-^Address:\|\
+^Address: *[A-Z]\{2\}$\|\
 ^City:\|\
 ^StateProv:\|\
 ^Country:" \
