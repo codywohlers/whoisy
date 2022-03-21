@@ -3,10 +3,10 @@
 # Simplifies and somewhat standardizes whois results and also return whois for ip and geoiplookup
 # Arguments: domain/ip
 #
+# 2022-Mar-21 code@codywohlers.ca - added a space between field and data if there wasn't one.
 # 2022-Mar-21 code@codywohlers.ca - changed IP whois address field to only filter two letters (country).
 # 2022-Mar-20 code@codywohlers.ca - added "No whois server" error to the filter.
 # 2022-Mar-19 code@codywohlers.ca - handled "Name server" case.
-# 2022-Mar-19 code@codywohlers.ca - removed trailing spaces so uniq works properly and converted domain to lowercase.
 # 2022-Mar-16 code@codwyohlers.ca - initial creation based on responses from multiple and international whois responses.
 
 if [ -z "$1" ] ;then
@@ -49,6 +49,8 @@ whois "$DOMAIN" \
 |sed 's/^Name [Ss]erver:.*/\L&/g' |sed 's/^name server/Name Server/g' \
 `: # Keep Registrar URLs consistent between whois servers and even in the same results (https:// vs http:// vs none).`\
 |sed 's/http[s]*:\/\///g' \
+`: # Make sure there is a space after every field.  Must be done after removing http[s]://`\
+|sed 's/:/: /g' \
 `: # Filer the needed fields and possible error messages.  Some servers have the country in an Address field as the two-letter abbreviation.`\
 |grep -i "\
 ^No whois server\|\
@@ -75,6 +77,8 @@ whois "$DOMAIN" \
 ^Registrar:\|\
 ^Registrar URL:\|\
 ^Name [Ss]erver:" \
+`: # Make delimiters consistent by removing groups of spaces and replacing every field spacer with a tab.`\
+|sed 's/  */ /g' |sed 's/: /:\t/g' \
 `: # Sort fields`\
 |sed 's/^Registrant/01-&/g' \
 |sed 's/^Org/01-&/g' \
@@ -91,13 +95,11 @@ whois "$DOMAIN" \
 |sed 's/^Changed:/08-&/g' \
 |sort |uniq -i \
 |sed 's/^[0-9]\{2\}-//g' \
-`: # Make delimiters consistent by removing groups of spaces and replacing every field with a tab.`\
-|sed 's/  */ /g' |sed 's/: /:\t/g' \
 `: # Adjust column widths by adding extra tab for short field names.`\
 |sed 's/^[^ ]\{3\}:\t/&\t/g' \
 |sed 's/^[^ ]\{4\}:\t/&\t/g' \
-|sed 's/^[^ ]\{5\}:\t/&\t/g' \
-|uniq -i
+|sed 's/^[^ ]\{5\}:\t/&\t/g'
+#|uniq -i
 
 
 # Digg +short will sometimes return multiple ip addresses.
@@ -163,7 +165,13 @@ echo "$OUTPUT" \
 |sed 's/^City/04-&/g' \
 |sed 's/^State\/Province/05-&/g' \
 |sed 's/^Country/06-&/g' \
+`: # Make delimiters consistent by removing groups of spaces and replacing every field spacer with a tab.`\
+|sed 's/  */ /g' |sed 's/: /:\t/g' \
 |sort |uniq -i \
-|sed 's/^[0-9]\{2\}-//g'
+|sed 's/^[0-9]\{2\}-//g' \
+`: # Adjust column widths by adding extra tab for short field names.`\
+|sed 's/^[^ ]\{3\}:\t/&\t/g' \
+|sed 's/^[^ ]\{4\}:\t/&\t/g' \
+|sed 's/^[^ ]\{5\}:\t/&\t/g'
 
 fi
